@@ -1,3 +1,9 @@
+"""
+Telegram Music Bot
+Конвертирует ссылки между Spotify и Яндекс.Музыкой
+Версия: 1.0.1
+"""
+
 import requests
 import re
 # from langdetect import detect  # Если не нужно, можно удалить
