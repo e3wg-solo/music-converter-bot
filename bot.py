@@ -13,6 +13,7 @@ from supabase import create_client, Client as SupabaseClient
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
+import traceback
 
 print("🚀 Бот запускается...")
 
@@ -33,6 +34,13 @@ dp = Dispatcher()
 router = Router()
 client = Client(YANDEX_TOKEN).init()
 supabase: SupabaseClient = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Проверка подключения к Supabase
+try:
+    test_response = supabase.table("requests").select("count").execute()
+    print("✅ Подключение к Supabase успешно!")
+except Exception as e:
+    print(f"❌ Ошибка подключения к Supabase: {str(e)}")
 
 print("✅ Библиотеки загружены, создаём маршруты...")
 
@@ -297,17 +305,23 @@ class Statistics:
             }
             
             print(f"📝 Логируем запрос в Supabase: {data}")
-            response = self.supabase.table("requests").insert(data).execute()
             
-            if hasattr(response, 'error') and response.error:
-                print(f"❌ Ошибка Supabase при логировании: {response.error}")
+            # Добавляем больше информации об ошибках
+            try:
+                response = self.supabase.table("requests").insert(data).execute()
+                print(f"✅ Ответ от Supabase: {response}")
+                if hasattr(response, 'error') and response.error:
+                    print(f"❌ Ошибка Supabase при логировании: {response.error}")
+                    return None
+                    
+                print(f"✅ Запрос успешно залогирован в Supabase")
+                return response.data
+            except Exception as insert_error:
+                print(f"❌ Ошибка при выполнении insert: {str(insert_error)}")
                 return None
                 
-            print(f"✅ Запрос успешно залогирован в Supabase")
-            return response.data
-            
         except Exception as e:
-            print(f"❌ Ошибка при логировании запроса: {str(e)}")
+            print(f"❌ Ошибка при подготовке данных: {str(e)}")
             return None
     
     async def get_user_stats(self, user_id):
@@ -460,44 +474,62 @@ async def convert_yandex_to_spotify(message: types.Message):
 @router.message(Command("stats"))
 async def show_stats(message: types.Message):
     """Показать статистику пользователя"""
-    user_stats = await stats.get_user_stats(message.from_user.id)
-    
-    total_requests = len(user_stats)
-    successful = len([s for s in user_stats if s['status'] == 'success'])
-    failed = len([s for s in user_stats if s['status'] == 'error'])
-    not_found = len([s for s in user_stats if s['status'] == 'not_found'])
-    
-    stats_message = (
-        f"📊 Ваша статистика:\n"
-        f"Всего запросов: {total_requests}\n"
-        f"Успешных: {successful}\n"
-        f"Не найдено: {not_found}\n"
-        f"Ошибок: {failed}"
-    )
-    
-    await message.answer(stats_message)
+    try:
+        print(f"📊 Запрошена статистика пользователем {message.from_user.id}")
+        user_stats = await stats.get_user_stats(message.from_user.id)
+        
+        total_requests = len(user_stats)
+        successful = len([s for s in user_stats if s['status'] == 'success'])
+        failed = len([s for s in user_stats if s['status'] == 'error'])
+        not_found = len([s for s in user_stats if s['status'] == 'not_found'])
+        
+        stats_message = (
+            f"📊 Ваша статистика:\n"
+            f"Всего запросов: {total_requests}\n"
+            f"Успешных: {successful}\n"
+            f"Не найдено: {not_found}\n"
+            f"Ошибок: {failed}"
+        )
+        
+        await message.answer(stats_message)
+        print(f"✅ Статистика успешно отправлена пользователю {message.from_user.id}")
+    except Exception as e:
+        error_msg = f"❌ Ошибка при получении статистики: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        await message.answer("❌ Произошла ошибка при получении статистики. Попробуйте позже.")
 
 
 @router.message(Command("admin_stats"))
 async def show_admin_stats(message: types.Message):
     """Показать общую статистику (только для админов)"""
-    ADMIN_IDS = [81078202]  # Замените на ваш ID в Telegram
-    
-    if message.from_user.id not in ADMIN_IDS:
-        await message.answer("⛔️ У вас нет доступа к этой команде")
-        return
+    try:
+        user_id = message.from_user.id
+        print(f"👤 Запрос админ-статистики от пользователя {user_id}")
         
-    total_stats = await stats.get_total_stats()
-    stats_message = (
-        f"📊 Общая статистика:\n"
-        f"Всего пользователей: {total_stats.get('unique_users', 0)}\n"
-        f"Всего запросов: {total_stats.get('total', 0)}\n"
-        f"Успешных: {total_stats.get('success', 0)}\n"
-        f"Не найдено: {total_stats.get('not_found', 0)}\n"
-        f"Ошибок: {total_stats.get('error', 0)}"
-    )
-    
-    await message.answer(stats_message)
+        ADMIN_IDS = [81078202]  # Ваш ID
+        
+        if user_id not in ADMIN_IDS:
+            print(f"⛔️ Отказано в доступе пользователю {user_id}")
+            await message.answer("⛔️ У вас нет доступа к этой команде")
+            return
+            
+        print("✅ Доступ разрешен, получаем статистику...")
+        total_stats = await stats.get_total_stats()
+        stats_message = (
+            f"📊 Общая статистика:\n"
+            f"Всего пользователей: {total_stats.get('unique_users', 0)}\n"
+            f"Всего запросов: {total_stats.get('total', 0)}\n"
+            f"Успешных: {total_stats.get('success', 0)}\n"
+            f"Не найдено: {total_stats.get('not_found', 0)}\n"
+            f"Ошибок: {total_stats.get('error', 0)}"
+        )
+        
+        await message.answer(stats_message)
+        print(f"✅ Админ-статистика успешно отправлена")
+    except Exception as e:
+        error_msg = f"❌ Ошибка при получении админ-статистики: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        await message.answer("❌ Произошла ошибка при получении статистики. Попробуйте позже.")
 
 # 🔹 Запуск бота
 async def main():
