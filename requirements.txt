@@ -1,0 +1,8 @@
+aiogram>=3.0.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+yandex-music>=2.1.1
+fuzzywuzzy>=0.18.0
+python-Levenshtein>=0.21.1
+supabase>=2.0.0
+python-dateutil>=2.8.2 
