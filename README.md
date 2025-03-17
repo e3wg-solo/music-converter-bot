@@ -1,33 +1,31 @@
-# Music Service Converter Bot
+# Music Converter Bot
 
-Telegram бот для конвертации ссылок между музыкальными сервисами (Spotify ↔️ Яндекс.Музыка)
+Telegram бот для конвертации ссылок между музыкальными сервисами Spotify и Яндекс.Музыка.
 
-## Возможности
+## Функциональность
 
 - Конвертация ссылок из Spotify в Яндекс.Музыку
 - Конвертация ссылок из Яндекс.Музыки в Spotify
-- Отслеживание статистики использования
-- Админ-панель со статистикой
+- Статистика использования для пользователей
+- Админ-статистика для администраторов
 
 ## Установка
 
 1. Клонируйте репозиторий:
 ```bash
-git clone https://github.com/YOUR_USERNAME/music-converter-bot.git
+git clone [repository-url]
 cd music-converter-bot
 ```
 
 2. Создайте виртуальное окружение и установите зависимости:
 ```bash
 python -m venv venv
-source venv/bin/activate  # Для Linux/Mac
-# или
-venv\Scripts\activate  # Для Windows
+source venv/bin/activate  # для Linux/Mac
 pip install -r requirements.txt
 ```
 
-3. Создайте файл `.env` и заполните необходимые переменные окружения:
-```env
+3. Создайте файл `.env` с необходимыми переменными окружения:
+```
 API_TOKEN=your_telegram_bot_token
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
@@ -36,10 +34,20 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_key
 ```
 
-4. Запустите бота:
+## Запуск
+
 ```bash
 python bot.py
 ```
+
+## Деплой
+
+Бот настроен на автоматический деплой через GitHub Actions при пуше в ветку `main`.
+
+## Требования
+
+- Python 3.10+
+- Все необходимые зависимости указаны в `requirements.txt`
 
 ## Развертывание
 

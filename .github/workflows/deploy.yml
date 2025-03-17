@@ -31,8 +31,8 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/botuser/music-converter-bot
+            cd /root/bot-env
             git pull
             source venv/bin/activate
             pip install -r requirements.txt
-            sudo systemctl restart music-bot 
+            systemctl restart muzabot 

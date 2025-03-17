@@ -4,6 +4,7 @@ import re
 from yandex_music import Client
 from aiogram import Bot, Dispatcher, types, Router
 from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
 from fuzzywuzzy import fuzz
 import asyncio
@@ -20,7 +21,7 @@ print("🚀 Бот запускается...")
 # Загрузка переменных окружения
 load_dotenv()
 
-# 🔹 Получение данных из переменных окружения
+# Конфигурация
 API_TOKEN = os.getenv("API_TOKEN")
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
@@ -28,8 +29,15 @@ YANDEX_TOKEN = os.getenv("YANDEX_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+# SSH Configuration
+SSH_HOST = os.getenv("SSH_HOST")
+SSH_USERNAME = os.getenv("SSH_USERNAME")
+SSH_PRIVATE_KEY = os.getenv("SSH_PRIVATE_KEY")
+
+print(f"✅ Конфигурация загружена")
+
 # 🔹 Инициализация API-клиентов
-bot = Bot(token=API_TOKEN)
+bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
 dp = Dispatcher()
 router = Router()
 client = Client(YANDEX_TOKEN).init()
@@ -46,19 +54,42 @@ print("✅ Библиотеки загружены, создаём маршру�
 
 class ProxyManager:
     def __init__(self):
-        self.proxies = [
-            "http://vpn.getdataroom.com:30000",  # Замените на ваши прокси
-            "http://vpn.getdataroom.com:30001",
-            "http://vpn.getdataroom.com:30002"
-        ]
-        self.current_index = 0
+        proxy_string = "156.246.145.173:63732:JHS4g133:6gQdk49S"
+        host, port, username, password = proxy_string.split(":")
+        self.http_proxy_url = f"http://{username}:{password}@{host}:{port}"
+        self.socks_proxy_url = f"socks5://{username}:{password}@{host}:{port}"  # Используем тот же порт
+        self.use_socks = True  # По умолчанию используем SOCKS
+        self.verify_proxy()
+        
+    def verify_proxy(self):
+        try:
+            print("🔄 Проверяем SOCKS5 прокси...")
+            response = requests.get(
+                "https://api.spotify.com/v1/ping",
+                proxies={"http": self.socks_proxy_url, "https": self.socks_proxy_url},
+                timeout=10
+            )
+            print(f"✅ SOCKS5 прокси работает! Статус: {response.status_code}")
+            self.use_socks = True
+        except Exception as e:
+            print(f"⚠️ Ошибка при проверке SOCKS5 прокси: {e}")
+            print("🔄 Пробуем HTTP прокси...")
+            try:
+                response = requests.get(
+                    "https://api.spotify.com/v1/ping",
+                    proxies={"http": self.http_proxy_url, "https": self.http_proxy_url},
+                    timeout=10
+                )
+                print(f"✅ HTTP прокси работает! Статус: {response.status_code}")
+                self.use_socks = False
+            except Exception as e:
+                print(f"❌ HTTP прокси тоже не работает: {e}")
         
     def get_proxy(self):
-        proxy = self.proxies[self.current_index]
-        self.current_index = (self.current_index + 1) % len(self.proxies)
+        proxy_url = self.socks_proxy_url if self.use_socks else self.http_proxy_url
         return {
-            "http": proxy,
-            "https": proxy
+            "http": proxy_url,
+            "https": proxy_url
         }
 
 proxy_manager = ProxyManager()
@@ -534,10 +565,29 @@ async def show_admin_stats(message: types.Message):
 # 🔹 Запуск бота
 async def main():
     print("🚀 Бот готов к запуску!")
-    await bot.delete_webhook(drop_pending_updates=True)
+    
+    # Проверяем подключение к Telegram
+    try:
+        me = await bot.get_me()
+        print(f"✅ Подключение к Telegram успешно! Имя бота: {me.full_name}")
+    except Exception as e:
+        print(f"❌ Ошибка при подключении к Telegram: {e}")
+        return
+    
+    # Полностью сбрасываем состояние бота
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        print("✅ Вебхук успешно удален")
+    except Exception as e:
+        print(f"❌ Ошибка при удалении вебхука: {e}")
+    
+    # Настраиваем и запускаем бота
     dp.include_router(router)
-    await dp.start_polling(bot)
-
+    try:
+        print("🚀 Запускаем получение обновлений...")
+        await dp.start_polling(bot, allowed_updates=["message"])
+    except Exception as e:
+        print(f"❌ Ошибка при запуске бота: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,0 +1,15 @@
+[Unit]
+Description=Telegram Music Bot Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/bot-env
+Environment=PYTHONPATH=/root/bot-env
+ExecStart=/root/bot-env/venv/bin/python bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target 
